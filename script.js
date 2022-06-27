@@ -1,7 +1,8 @@
-// The code for the force graph function has been adapted from the following place
+// The code for the force graph function has been modified from the following website
+// https://observablehq.com/@d3/force-directed-graph
 // Copyright 2021 Observable, Inc.
 // Released under the ISC license.
-// https://observablehq.com/@d3/force-directed-graph
+
 function ForceGraph({
     nodes, // an iterable of node objects (typically [{id}, …])
     links // an iterable of link objects (typically [{source, target}, …])
@@ -109,6 +110,8 @@ function ForceGraph({
         .on("mousemove", mousemove)
         .on("mouseleave", mouseleave);
 
+
+    // Filter duplicate nodes for legend
     const uniqueNode = nodeGroups.filter(onlyUnique);
 
     // Add one dot in the legend for each name.
@@ -132,7 +135,7 @@ function ForceGraph({
         .attr("y", function(d,i){ return 100 + i*25}) // 100 is where the first dot appears. 25 is the distance between dots
         .style("fill", function(d){ return color(d)})
         .text(function(d){ return d})
-        .style("stroke", "lightgray")
+        .style("stroke", "gray")
         .style('stroke-width', '0.5px')
         .attr("text-anchor", "left")
         .style("alignment-baseline", "middle");
@@ -179,6 +182,7 @@ function ForceGraph({
 
     function mouseover(d) {
         tooltip
+            .style("display", "block")
             .style("opacity", 0.9);
         d3.select(this)
             .transition()
@@ -197,7 +201,8 @@ function ForceGraph({
 
     function mouseleave(d) {
         tooltip
-            .style("opacity", 0);
+            .style("opacity", 0)
+            .style("display", "none");
         d3.select(this)
             .transition()
             .style("stroke", nodeStroke)
@@ -213,7 +218,7 @@ function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-// For removing duplicates in arra
+// For removing duplicates in array
 function onlyUnique(value, index, self) {
     return self.indexOf(value) === index;
 }
@@ -229,16 +234,46 @@ Promise.all([d3.json("links.json"), d3.json("cases.json")]).then(data => {
     console.log(data); //links
     console.log(data[1]); //cases
 
-    diagram = ForceGraph({
+    ForceGraph({
         nodes: data[1],
         links: data[0] },
     {
         nodeId: d => d.id,
         nodeGroup: d => d.gender,
-        colors: ["violet", "cyan"]
+        colors: ["violet", "cyan", "#32CD32"]
         // nodeTitle: d => `${d.id}\n${d.gender}`,
         // linkSource: ({source}) => source, // given d in links, returns a node identifier string
         // linkTarget: ({target}) => target, // given d in links, returns a node identifier string
     })
+
+    d3.select("#btGender").on("click", function() {
+        d3.select("svg").remove();
+        ForceGraph({
+            nodes: data[1],
+            links: data[0] },
+        {
+            nodeId: d => d.id,
+            nodeGroup: d => d.gender,
+            colors: ["violet", "cyan", "#32CD32"]
+            // nodeTitle: d => `${d.id}\n${d.gender}`,
+            // linkSource: ({source}) => source, // given d in links, returns a node identifier string
+            // linkTarget: ({target}) => target, // given d in links, returns a node identifier string
+        })
+    });
+
+    d3.select("#btVaccination").on("click", function() {
+        d3.select("svg").remove();
+        ForceGraph({
+            nodes: data[1],
+            links: data[0] },
+        {
+            nodeId: d => d.id,
+            nodeGroup: d => d.vaccinated,
+            colors: ["#F45B69", "#00A6ED", "#7FB800"]
+            // nodeTitle: d => `${d.id}\n${d.gender}`,
+            // linkSource: ({source}) => source, // given d in links, returns a node identifier string
+            // linkTarget: ({target}) => target, // given d in links, returns a node identifier string
+        })
+    });
     
 })
