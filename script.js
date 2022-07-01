@@ -15,7 +15,7 @@ function ForceGraph({
     nodeStroke = "lightgray", // node stroke color
     nodeStrokeWidth = 2.5, // node stroke width, in pixels
     nodeStrokeOpacity = 1, // node stroke opacity
-    nodeRadius = 10, // node radius, in pixels
+    nodeRadius = 15, // node radius, in pixels
     nodeStrength,
     linkSource = ({source}) => source, // given d in links, returns a node identifier string
     linkTarget = ({target}) => target, // given d in links, returns a node identifier string
@@ -24,6 +24,7 @@ function ForceGraph({
     linkStrokeWidth = 2.5, // given d in links, returns a stroke width in pixels
     linkStrokeLinecap = "round", // link stroke linecap
     linkStrength,
+    linkDistance = 60,
     colors = d3.schemeTableau10, // an array of color strings, for the node groups
     width = 1200, // outer width, in pixels
     height = 580, // outer height, in pixels
@@ -54,13 +55,13 @@ function ForceGraph({
 
     // Construct the forces.
     const forceNode = d3.forceManyBody();
-    const forceLink = d3.forceLink(links).id(({index: i}) => N[i]);
+    const forceLink = d3.forceLink(links).id(({index: i}) => N[i]).distance(linkDistance);
     if (nodeStrength !== undefined) forceNode.strength(nodeStrength);
     if (linkStrength !== undefined) forceLink.strength(linkStrength);
 
     const simulation = d3.forceSimulation(nodes)
-        .force("link", forceLink)
         .force("charge", forceNode)
+        .force("link", forceLink)
         .force("center",  d3.forceCenter())
         .on("tick", ticked);
     
@@ -79,6 +80,29 @@ function ForceGraph({
         .attr("viewBox", [-width / 2, -height / 2, width, height])
         .attr("style", "max-width: 100%; height: auto; height: intrinsic;");
 
+    
+    // Create arrows for links
+    let marker = svg.append("defs")
+        .attr("class", "defs")
+        .selectAll("marker")
+        .data(links, function (d) { return d.source.id + "-" + d.target.id; });
+    marker = marker
+        .enter()
+        .append("marker")
+        .style("fill", "#000")
+        .attr("id", function (d) { return (d.source.id + "-" + d.target.id).replace(/\s+/g, ''); })
+        .style("opacity", function (d) { return Math.min(d.value, 1); })
+        .attr("viewBox", "0 -5 10 10")
+        .attr("refX", 22) 
+        .attr("refY", 0)
+        .attr("markerWidth", 5)
+        .attr("markerHeight", 5)
+        .attr("orient", "auto")
+        .append("path")
+        .attr("d", "M0,-5L10,0L0,5")
+        .attr("fill", linkStroke)
+        .merge(marker);
+
     const link = svg.append("g")
         .attr("stroke", typeof linkStroke !== "function" ? linkStroke : null)
         .attr("stroke-opacity", linkStrokeOpacity)
@@ -86,7 +110,8 @@ function ForceGraph({
         .attr("stroke-linecap", linkStrokeLinecap)
         .selectAll("line")
         .data(links)
-        .join("line");
+        .join("line")
+        .attr("marker-end", function(d) { return "url(#" + (d.source.id + "-" + d.target.id).replace(/\s+/g, '') + ")"; });
 
     const node = svg.append("g")
         .attr("fill", nodeFill)
@@ -109,7 +134,6 @@ function ForceGraph({
         .on("mouseover", mouseover)
         .on("mousemove", mousemove)
         .on("mouseleave", mouseleave);
-
 
     // Filter duplicate nodes for legend
     const uniqueNode = nodeGroups.filter(onlyUnique);
@@ -193,7 +217,13 @@ function ForceGraph({
 
     function mousemove(event, d) {
         tooltip
-            .html(d.id + "<br>" + capitalizeFirstLetter(d.gender) + "<br>" + capitalizeFirstLetter(d.occupation) + "<br>" + capitalizeFirstLetter(d.organization))
+            .html(
+                d.id + "<br>" + 
+                capitalizeFirstLetter(d.gender) + "<br>" + 
+                capitalizeFirstLetter(d.occupation) + "<br>" + 
+                capitalizeFirstLetter(d.organization) + "<br>" +
+                "Vaccination: " + capitalizeFirstLetter(d.vaccinated)
+            ) 
             .style("position", "absolute")
             .style("top", (event.pageY - 15)+"px")
             .style("left",(event.pageX + 15)+"px");
